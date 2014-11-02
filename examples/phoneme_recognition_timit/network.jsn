@@ -1,0 +1,50 @@
+{
+    "layers": [
+        {
+            "size": 117,
+            "name": "fbank",
+            "type": "input"
+        },
+        {
+            "size": 250,
+            "name": "blstm1",
+            "bias": 1.0,
+            "type": "blstm"
+        },
+        {
+            "size": 250,
+            "name": "blstm2",
+            "bias": 1.0,
+            "type": "blstm"
+        },
+        {
+            "size": 250,
+            "name": "blstm3",
+            "bias": 1.0,
+            "type": "blstm"
+        },
+        {
+            "size": 250,
+            "name": "blstm4",
+            "bias": 1.0,
+            "type": "blstm"
+        },
+        {
+            "size": 250,
+            "name": "blstm5",
+            "bias": 1.0,
+            "type": "blstm"
+        },
+        {
+            "size": 183,
+            "name": "output",
+            "bias": 1.0,
+            "type": "softmax"
+        },
+        {
+            "size": 183,
+            "name": "postoutput",
+            "type": "multiclass_classification"
+        }
+    ]
+}
