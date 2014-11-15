@@ -58,7 +58,7 @@ public:
      * @param maxSeqLength      The maximum length of a sequence
      */
     NeuralNetwork(const helpers::JsonDocument &jsonDoc, int parallelSequences, int maxSeqLength,
-                  int inputSizeOverride, int outputSizeOverride);
+                  int inputSizeOverride = -1, int outputSizeOverride = -1);
 
     /**
      * Destructs the neural network

@@ -36,7 +36,7 @@
 
 template <typename TDevice>
 NeuralNetwork<TDevice>::NeuralNetwork(const helpers::JsonDocument &jsonDoc, int parallelSequences, int maxSeqLength, 
-                                      int inputSizeOverride = -1, int outputSizeOverride = -1)
+                                      int inputSizeOverride, int outputSizeOverride)
 {
     try {
         // check the layers and weight sections
