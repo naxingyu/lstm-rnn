@@ -9,7 +9,7 @@ The project was open-sourced at SourceForge by Johannes Bergmann and Felix Wenin
 ## Changlog
 1. Add TIMIT example according to (Alex2013) recipe for phone recognition, differing in that state identities (183) are used instead of phoneme identities (61), requiring frame-level alignment.
 
-> Alex Graves, Navdeep Jaitly and Abdel-rahman Mohamed. Hybrid Speech Recognition with Deep Bidirectional LSTM, ASRU 2013.
+[Alex2013] Alex Graves, Navdeep Jaitly and Abdel-rahman Mohamed. Hybrid Speech Recognition with Deep Bidirectional LSTM, ASRU 2013.
 
 2. Modify tools/htk2nc.cpp.
 
