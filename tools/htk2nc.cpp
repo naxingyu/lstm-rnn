@@ -211,13 +211,49 @@ int read_label_file(const char* filename, const map<string, int>& labelMap, int*
     return 0;
 }
 
+// read label file and get label indices as int
+int read_label_file(const char* filename, int* label_buf, size_t nlabels, int nclasses)
+{
+    ifstream lfstream(filename);
+    size_t j = 0;
+    if (lfstream.good()) {
+        string buf;
+        int idx;
+        while (!lfstream.eof()) {
+            getline(lfstream, buf);
+            if (!buf.empty()) {
+                idx = atoi(buf.c_str());
+                if (idx == nclasses) {
+                    return -1;
+                }
+                else {
+                    if (j > nlabels) {
+                        return -1;
+                    }
+                    label_buf[j] = idx;
+                }
+                ++j;
+            }
+        }
+    }
+    else {
+        return -1;
+    }
+    return 0;
+}
 
 int main(int argc, char** argv)
 {
-    if (argc < 3) {
-        cerr << "Usage: " << argv[0] << " <mapping.txt> <out.nc> [map file delimiter character] [max. sequence length, 0 for infinite]" << endl;
-        cerr << "  where mapping.txt defines mappings of HTK files" << endl;
-        cerr << "  (multiple targets will be combined)" << endl;
+    if (argc < 5) {
+        cerr << "Usage: " << argv[0] << " [options]" << endl;
+        cerr << "  options:" << endl;
+        cerr << "  --mapping_list s : s defines mappings of HTK files" << endl;
+        cerr << "                     (multiple targets will be combined)" << endl;
+        cerr << "  --nc s           : output nc file" << endl;
+        cerr << "  optional:" << endl;
+        cerr << "  --no_label_map i : don't do label mapping, use predefined number of classes instead. default is false" << endl;
+        cerr << "  --delimiter c    : map file delimiter character, default is space" << endl;
+        cerr << "  --max_len i      : max. sequence length, default is 0 for infinite" << endl;
         cerr << "Mapping syntax:" << endl;
         cerr << "  <seq_tag> <#input files> <input_feat_file> [ <input_feat_file> ... ] <output_feat_file> [ <output_feat_file> ... ]" << endl;
         cerr << "Ex." << endl;
@@ -227,7 +263,7 @@ int main(int argc, char** argv)
         return 1;
     }
     
-    ifstream fs(argv[1]);
+    ifstream fs;
     string buf, tok;
     uint32_t totalTimesteps = 0;
     uint32_t input_size = 0;
@@ -245,17 +281,44 @@ int main(int argc, char** argv)
 
     char mappingDelim = ' ';
     int maxSeqLen = 0;
-    if (argc > 3) {
-      mappingDelim = argv[3][0];
-    }
-    if (argc > 4) {
-      maxSeqLen = atoi(argv[4]);
-      cout << "Max sequence length is " << maxSeqLen << endl;
-    }
     bool isClassification = false;
-
     bool first = true;
-    
+
+    // parse options
+    string fnMap;
+    string fnNc;
+    bool dolabelMap = true;
+    int nClasses = 0;
+    for(int i = 1; i < argc; ++i) {
+        if(strcmp(argv[i], "--mapping_list") == 0)
+            fnMap = argv[++i];
+        else if(strcmp(argv[i], "--nc") == 0)
+            fnNc = argv[++i]
+        else if(strcmp(argv[i], "--delimiter") == 0)
+            mappingDelim = argv[++i][0];
+        else if(strcmp(argv[i], "--do_label_map") == 0) {
+            dolabelMap = false;
+            nClasses = atoi(argv[++i]);
+            cout << "Predefined number of classes is " << nClasses << endl;
+        }
+        else if(strcmp(argv[i], "--max_len") == 0) {
+            maxSeqLen = atoi(argv[++i]);
+            cout << "Max sequence length is " << maxSeqLen << endl;
+        } else {
+            cerr << "unknown option " << argv[i] << endl;
+            return 1;
+        }
+    }
+    if(fnMap == NULL || fnNc == NULL) {
+        cerr << "provide mapping and nc filename" << endl;
+        return 1;
+    }
+    fs.open(fnMap.c_str());
+    if(!fs) {
+        cerr << "connot open mapping file " << fnMap << endl;
+        return 1;
+    }
+
     // parse mapping file
     while (!fs.eof()) {
         getline(fs, buf);
@@ -377,7 +440,7 @@ int main(int argc, char** argv)
             seqLens.push_back(seqLen);
         }
         else {
-            cerr << "Error: expected at least 2 filenames in file " << argv[1] << endl;
+            cerr << "Error: expected at least 2 filenames in file " << fnMap << endl;
             return -1;
         }
         first = false;
@@ -390,16 +453,30 @@ int main(int argc, char** argv)
     if (isClassification) {
         int task = 0;
         labels.resize(nClassificationTasks);
-        for (vector<map<string, int> >::const_iterator itr = labelMap.begin(); itr != labelMap.end(); ++itr)
-        {
-            ++task;
-            cout << "Classification task #" << task << ": " << itr->size() << " labels" << endl;
-            for (map<string, int>::const_iterator itr2 = itr->begin(); itr2 != itr->end(); ++itr2) 
+        if(dolabelMap) {
+            for (vector<map<string, int> >::const_iterator itr = labelMap.begin(); itr != labelMap.end(); ++itr)
             {
-                cout << "  " << itr2->second << ": " << itr2->first << endl;
-                labels[task - 1].push_back(itr2->first);
-                if (itr2->first.size() + 1 > maxLabelLength) {
-                    maxLabelLength = itr2->first.size() + 1;
+                ++task;
+                cout << "Classification task #" << task << ": " << itr->size() << " labels" << endl;
+                for (map<string, int>::const_iterator itr2 = itr->begin(); itr2 != itr->end(); ++itr2) 
+                {
+                    cout << "  " << itr2->second << ": " << itr2->first << endl;
+                    labels[task - 1].push_back(itr2->first);
+                    if (itr2->first.size() + 1 > maxLabelLength) {
+                        maxLabelLength = itr2->first.size() + 1;
+                    }
+                }
+            }
+        } else {
+            for (task = 0; task < nClassificationTasks; ++task) {
+                cout << "Classification task #" << task << ": " << nClasses << " labels" << endl;
+                for (int i = 0; i < nClasses; ++i) {
+                    stringstream ss;
+                    ss << i;
+                    labels[task].push_back(ss.str());
+                    if (ss.str().size() + 1 > maxLabelLength) {
+                        maxLabelLength = ss.str().size() + 1;
+                    }
                 }
             }
         }
@@ -468,7 +545,10 @@ int main(int argc, char** argv)
 
     int numLabels = 0;
     if (isClassification)
-        numLabels = labelMap[0].size(); // for NC generation only 1 task is supported ...
+        if (dolabelMap)
+            numLabels = labelMap[0].size(); // for NC generation only 1 task is supported ...
+        else
+            numLabels = nClasses
 
     // create nc "header"
 
@@ -476,7 +556,7 @@ int main(int argc, char** argv)
     int ret;
     int ncid;
     //if ((ret = nc_create(argv[2], NC_64BIT_OFFSET, &ncid)) != NC_NOERR) {
-    if ((ret = nc_create(argv[2], NC_NETCDF4, &ncid)) != NC_NOERR) {
+    if ((ret = nc_create(fnNc.c_str(), NC_NETCDF4, &ncid)) != NC_NOERR) {
         cerr << "Could not create NC file: " << nc_strerror(ret) << endl;
         return ret;
     }
@@ -663,7 +743,10 @@ int main(int argc, char** argv)
         // labels
         if (isClassification) {
             // assume 1 task ...
-            ret = read_label_file(mapping[s][nInputs].c_str(), labelMap[0], label_buf, seqLens[s]);
+            if (dolabelMap)
+                ret = read_label_file(mapping[s][nInputs].c_str(), labelMap[0], label_buf, seqLens[s]);
+            else
+                ret = read_label_file(mapping[s][nInputs].c_str(), label_buf, seqLens[s], nClasses);
             if (ret != 0) {
                 cerr << "Error reading label file file " << mapping[s][nInputs] << endl;
                 return ret;
